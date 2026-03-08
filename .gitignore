@@ -1,6 +1,19 @@
 venv/
 __pycache__/
 *.pyc
+.pytest_cache/
 
 data/
 artifacts/
+
+.env
+
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

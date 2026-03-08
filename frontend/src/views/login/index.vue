@@ -1,5 +1,6 @@
 <template>
   <div class="login-container">
+    <div class="login-bg"></div>
     <el-card class="box-card">
       <template #header>
         <div class="card-header">
@@ -69,15 +70,64 @@ const handleLogin = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  position: relative;
 }
+
+.login-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('/login_bg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 0;
+}
+
+.login-bg::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.3); /* Lighter transparent overlay */
+  z-index: 1;
+}
+
 .box-card {
-  width: 500px;
+  width: 750px;
+  z-index: 10;
+  background-color: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(100, 100, 111, 0.2);
 }
+
 .card-header {
   font-weight: bold;
   text-align: center;
-  font-size: 18px;
+  font-size: 24px;
   color: #1f2f3d;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+:deep(.el-input__wrapper) {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+  height: 44px;
+  font-size: 16px;
+}
+
+:deep(.el-button) {
+  border-radius: 8px;
+  font-size: 18px;
+  letter-spacing: 4px;
+  height: 48px;
+  margin-top: 10px;
 }
 </style>

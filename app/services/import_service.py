@@ -27,6 +27,7 @@ class ImportResult:
     total_rows: int
     success_rows: int
     error_rows: int
+    quality_flag_counts: dict[str, int]
     errors: list[str]
 
 
@@ -48,6 +49,7 @@ def import_excel_to_db(db: Session, file_path: str, filename: str) -> ImportResu
     total_rows = len(df)
     success_rows = 0
     error_rows = 0
+    quality_flag_counts: dict[str, int] = {}
 
     for idx, row in df.iterrows():
         row_num = idx + 2
@@ -120,6 +122,7 @@ def import_excel_to_db(db: Session, file_path: str, filename: str) -> ImportResu
             quality_flag=weather_flag if weather_flag != "ok" else quality_flag,
             source_batch_id=batch.id,
         )
+        quality_flag_counts[clean.quality_flag] = quality_flag_counts.get(clean.quality_flag, 0) + 1
         db.add(clean)
         db.add(raw)
         success_rows += 1
@@ -141,5 +144,6 @@ def import_excel_to_db(db: Session, file_path: str, filename: str) -> ImportResu
         total_rows=total_rows,
         success_rows=success_rows,
         error_rows=error_rows,
+        quality_flag_counts=quality_flag_counts,
         errors=errors[:50],
     )

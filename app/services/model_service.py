@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 import joblib
+from lightgbm import LGBMRegressor
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
@@ -89,6 +90,15 @@ def train_model(db: Session, feature_version: str, horizon: int, county: str):
     y_val = val_df["actual_count"].to_numpy(dtype=float)
 
     candidates = {
+        "LightGBMRegressor": LGBMRegressor(
+            n_estimators=300,
+            learning_rate=0.05,
+            max_depth=-1,
+            num_leaves=31,
+            subsample=0.9,
+            colsample_bytree=0.9,
+            random_state=42,
+        ),
         "LinearRegression": LinearRegression(),
         "RandomForestRegressor": RandomForestRegressor(
             n_estimators=200,

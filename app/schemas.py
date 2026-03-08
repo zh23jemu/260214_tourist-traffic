@@ -9,6 +9,7 @@ class ImportResponse(BaseModel):
     total_rows: int
     success_rows: int
     error_rows: int
+    quality_flag_counts: dict[str, int]
     errors: list[str]
 
 
@@ -78,3 +79,37 @@ class PredictionItem(BaseModel):
 class CorrelationItem(BaseModel):
     feature: str
     correlation: float
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+
+class DashboardSeriesPoint(BaseModel):
+    date: date
+    actual_count: float
+
+
+class DashboardPredictionPoint(BaseModel):
+    date: date
+    y_pred: float
+    y_low: float
+    y_high: float
+
+
+class DashboardOverviewResponse(BaseModel):
+    county_count: int
+    clean_row_count: int
+    feature_row_count: int
+    prediction_row_count: int
+    date_range: dict[str, date | None]
+    latest_model: dict | None
+    recent_actual_series: list[DashboardSeriesPoint]
+    recent_prediction_series: list[DashboardPredictionPoint]

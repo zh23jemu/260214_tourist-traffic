@@ -11,9 +11,14 @@ artifacts/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+artifacts/research/
+lightning_logs/
+research_app/.artifacts/
+research_app/**/__pycache__/
 
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 *.log
+venv312/

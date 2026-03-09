@@ -10,6 +10,8 @@ def _holiday_proxy(day_type: str | None) -> int:
     if not day_type:
         return 0
     value = day_type.strip()
+    if "调休上班" in value:
+        return 0
     keywords = ["节", "假", "周末", "休"]
     return 1 if any(k in value for k in keywords) and "工作" not in value else 0
 

@@ -42,10 +42,16 @@ def _prepare_calendar_lookup(df: pd.DataFrame, county: str | None = None) -> dic
         work = work[work["区县"].astype(str).str.strip() == county]
     if "日期" not in work.columns:
         return {}
+    work = work[work["日期"].notna()].copy()
+    if work.empty:
+        return {}
 
     calendar_rows: dict[pd.Timestamp, dict[str, object]] = {}
     for _, row in work.sort_values("日期").iterrows():
-        date_value = pd.Timestamp(row["日期"]).normalize()
+        date_raw = pd.to_datetime(row["日期"], errors="coerce")
+        if pd.isna(date_raw):
+            continue
+        date_value = pd.Timestamp(date_raw).normalize()
         calendar_rows[date_value] = {
             "weather_raw": str(row.get("当日天气", "")).strip(),
             "weather_label": _extract_weather_label(row.get("当日天气", "")),

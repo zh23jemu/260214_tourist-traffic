@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 
 from research_app.analysis.descriptive import (
@@ -21,6 +22,8 @@ from research_app.dashboard.plots import (
     build_day_type_box_figure,
     build_holiday_name_bar_figure,
     build_lstm_result_figure,
+    build_model_forecast_comparison_figure,
+    build_model_metric_comparison_figure,
     build_monthly_trend_figure,
     build_prophet_result_figure,
     build_shap_detail_figure,
@@ -64,6 +67,37 @@ def run_cached_lstm(df, county: str | None):
 @st.cache_data(show_spinner=False)
 def run_cached_tft(df, county: str | None):
     return train_tft(df=df, county=county if county != "全部" else None)
+
+
+def build_model_results(df, selected_county: str) -> dict[str, object]:
+    return {
+        "ARIMA": run_cached_arima(df, selected_county),
+        "Prophet": run_cached_prophet(df, selected_county),
+        "XGBoost": run_cached_xgboost(df, selected_county),
+        "LSTM": run_cached_lstm(df, selected_county),
+        "TFT": run_cached_tft(df, selected_county),
+    }
+
+
+def build_model_metrics_table(model_results: dict[str, object]):
+    rows = []
+    for model_name, result in model_results.items():
+        rows.append(
+            {
+                "model_name": model_name,
+                "status": result.status,
+                "mae": result.metrics.get("mae") if result.metrics else None,
+                "rmse": result.metrics.get("rmse") if result.metrics else None,
+                "mape": result.metrics.get("mape") if result.metrics else None,
+                "notes": result.notes,
+            }
+        )
+    metrics_df = pd.DataFrame(rows)
+    trained_df = metrics_df[metrics_df["status"] == "trained"].copy()
+    if not trained_df.empty:
+        trained_df = trained_df.sort_values("rmse", ascending=True).reset_index(drop=True)
+        trained_df["rank"] = trained_df.index + 1
+    return metrics_df, trained_df
 
 
 def main() -> None:
@@ -128,8 +162,11 @@ def main() -> None:
         """
     )
 
-    overview_tab, calendar_tab, models_tab, data_tab = st.tabs(
-        ["概览看板", "日期类型分析", "模型路线", "样本数据"]
+    model_results = build_model_results(df, selected_county)
+    metrics_df, trained_metrics_df = build_model_metrics_table(model_results)
+
+    overview_tab, calendar_tab, compare_tab, models_tab, data_tab = st.tabs(
+        ["概览看板", "日期类型分析", "模型对比", "模型详情", "样本数据"]
     )
 
     with overview_tab:
@@ -165,13 +202,50 @@ def main() -> None:
         else:
             st.dataframe(holiday_summary, use_container_width=True, hide_index=True)
 
-    with models_tab:
+    with compare_tab:
         st.subheader("模型实验规划")
         model_rows = [{"model_name": name, **meta} for name, meta in MODEL_REGISTRY.items()]
         st.dataframe(model_rows, use_container_width=True, hide_index=True)
 
+        st.subheader("模型指标总表")
+        st.dataframe(metrics_df, use_container_width=True, hide_index=True)
+
+        if trained_metrics_df.empty:
+            st.warning("当前没有可比较的已训练模型结果。")
+        else:
+            best_row = trained_metrics_df.iloc[0]
+            top1, top2, top3 = st.columns(3)
+            top1.metric("当前最佳模型", best_row["model_name"])
+            top2.metric("最低 RMSE", f"{best_row['rmse']:.2f}")
+            top3.metric("最低 MAE", f"{trained_metrics_df['mae'].min():.2f}")
+
+            left, right = st.columns(2)
+            with left:
+                st.plotly_chart(
+                    build_model_metric_comparison_figure(trained_metrics_df, metric_name="rmse"),
+                    use_container_width=True,
+                )
+            with right:
+                st.plotly_chart(
+                    build_model_metric_comparison_figure(trained_metrics_df, metric_name="mae"),
+                    use_container_width=True,
+                )
+
+            st.plotly_chart(
+                build_model_forecast_comparison_figure(model_results),
+                use_container_width=True,
+            )
+
+            st.subheader("已训练模型排名")
+            st.dataframe(
+                trained_metrics_df[["rank", "model_name", "mae", "rmse", "mape", "notes"]],
+                use_container_width=True,
+                hide_index=True,
+            )
+
+    with models_tab:
         st.subheader("ARIMA 实验结果")
-        arima_result = run_cached_arima(df, selected_county)
+        arima_result = model_results["ARIMA"]
         st.write(arima_result.notes)
         if arima_result.status == "trained":
             m1, m2, m3 = st.columns(3)
@@ -184,7 +258,7 @@ def main() -> None:
             st.warning("ARIMA 当前未能完成训练，请检查样本量或筛选条件。")
 
         st.subheader("Prophet 实验结果")
-        prophet_result = run_cached_prophet(df, selected_county)
+        prophet_result = model_results["Prophet"]
         st.write(prophet_result.notes)
         if prophet_result.status == "trained":
             m1, m2, m3 = st.columns(3)
@@ -197,7 +271,7 @@ def main() -> None:
             st.warning("Prophet 当前未能完成训练，请检查样本量或筛选条件。")
 
         st.subheader("XGBoost 实验结果")
-        xgboost_result = run_cached_xgboost(df, selected_county)
+        xgboost_result = model_results["XGBoost"]
         st.write(xgboost_result.notes)
         if xgboost_result.status == "trained":
             m1, m2, m3 = st.columns(3)
@@ -210,7 +284,7 @@ def main() -> None:
             st.warning("XGBoost 当前未能完成训练，请检查样本量或筛选条件。")
 
         st.subheader("LSTM 实验结果")
-        lstm_result = run_cached_lstm(df, selected_county)
+        lstm_result = model_results["LSTM"]
         st.write(lstm_result.notes)
         if lstm_result.status == "trained":
             m1, m2, m3 = st.columns(3)
@@ -223,7 +297,7 @@ def main() -> None:
             st.warning("LSTM 当前未能完成训练，请检查样本量或筛选条件。")
 
         st.subheader("TFT 实验结果")
-        tft_result = run_cached_tft(df, selected_county)
+        tft_result = model_results["TFT"]
         st.write(tft_result.notes)
         if tft_result.status == "trained":
             m1, m2, m3 = st.columns(3)

@@ -3,6 +3,15 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 
+def _split_result_segments(result_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if result_df is None or result_df.empty:
+        return pd.DataFrame(), pd.DataFrame()
+    return (
+        result_df[result_df["segment"] == "holdout"].copy(),
+        result_df[result_df["segment"] == "forecast"].copy(),
+    )
+
+
 def build_actual_trend_figure(df: pd.DataFrame) -> go.Figure:
     valid = df[df["日期"].notna() & df["当日实际人数"].notna()].copy()
     if valid.empty:
@@ -70,8 +79,7 @@ def build_arima_result_figure(result_df: pd.DataFrame) -> go.Figure:
         return go.Figure()
 
     fig = go.Figure()
-    holdout_df = result_df[result_df["segment"] == "holdout"]
-    forecast_df = result_df[result_df["segment"] == "forecast"]
+    holdout_df, forecast_df = _split_result_segments(result_df)
 
     if not holdout_df.empty:
         fig.add_trace(
@@ -116,8 +124,7 @@ def build_prophet_result_figure(result_df: pd.DataFrame) -> go.Figure:
         return go.Figure()
 
     fig = go.Figure()
-    holdout_df = result_df[result_df["segment"] == "holdout"]
-    forecast_df = result_df[result_df["segment"] == "forecast"]
+    holdout_df, forecast_df = _split_result_segments(result_df)
 
     if not holdout_df.empty:
         fig.add_trace(
@@ -162,8 +169,7 @@ def build_xgboost_result_figure(result_df: pd.DataFrame) -> go.Figure:
         return go.Figure()
 
     fig = go.Figure()
-    holdout_df = result_df[result_df["segment"] == "holdout"]
-    forecast_df = result_df[result_df["segment"] == "forecast"]
+    holdout_df, forecast_df = _split_result_segments(result_df)
 
     if not holdout_df.empty:
         fig.add_trace(
@@ -247,8 +253,7 @@ def build_lstm_result_figure(result_df: pd.DataFrame) -> go.Figure:
         return go.Figure()
 
     fig = go.Figure()
-    holdout_df = result_df[result_df["segment"] == "holdout"]
-    forecast_df = result_df[result_df["segment"] == "forecast"]
+    holdout_df, forecast_df = _split_result_segments(result_df)
 
     if not holdout_df.empty:
         fig.add_trace(
@@ -293,8 +298,7 @@ def build_tft_result_figure(result_df: pd.DataFrame) -> go.Figure:
         return go.Figure()
 
     fig = go.Figure()
-    holdout_df = result_df[result_df["segment"] == "holdout"]
-    forecast_df = result_df[result_df["segment"] == "forecast"]
+    holdout_df, forecast_df = _split_result_segments(result_df)
 
     if not holdout_df.empty:
         fig.add_trace(
@@ -330,5 +334,61 @@ def build_tft_result_figure(result_df: pd.DataFrame) -> go.Figure:
         margin=dict(l=20, r=20, t=50, b=20),
         xaxis_title="Date",
         yaxis_title="Visitor Count",
+    )
+    return fig
+
+
+def build_model_metric_comparison_figure(metrics_df: pd.DataFrame, metric_name: str = "rmse") -> go.Figure:
+    if metrics_df is None or metrics_df.empty or metric_name not in metrics_df.columns:
+        return go.Figure()
+
+    plot_df = metrics_df.sort_values(metric_name, ascending=True).copy()
+    fig = px.bar(
+        plot_df,
+        x="model_name",
+        y=metric_name,
+        color="model_name",
+        title=f"模型 {metric_name.upper()} 对比",
+    )
+    fig.update_layout(showlegend=False, margin=dict(l=20, r=20, t=50, b=20), xaxis_title="Model")
+    return fig
+
+
+def build_model_forecast_comparison_figure(model_results: dict[str, object]) -> go.Figure:
+    fig = go.Figure()
+    added_actual = False
+
+    for model_name, result in model_results.items():
+        result_df = getattr(result, "forecast_df", None)
+        holdout_df, forecast_df = _split_result_segments(result_df)
+
+        if not added_actual and not holdout_df.empty:
+            fig.add_trace(
+                go.Scatter(
+                    x=holdout_df["date"],
+                    y=holdout_df["actual"],
+                    mode="lines+markers",
+                    name="Holdout Actual",
+                    line=dict(color="#111827", width=3),
+                )
+            )
+            added_actual = True
+
+        if not forecast_df.empty:
+            fig.add_trace(
+                go.Scatter(
+                    x=forecast_df["date"],
+                    y=forecast_df["predicted"],
+                    mode="lines+markers",
+                    name=f"{model_name} Forecast",
+                )
+            )
+
+    fig.update_layout(
+        title="多模型未来预测对比",
+        margin=dict(l=20, r=20, t=50, b=20),
+        xaxis_title="Date",
+        yaxis_title="Visitor Count",
+        legend_title="Series",
     )
     return fig

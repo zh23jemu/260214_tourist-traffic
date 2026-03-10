@@ -11,6 +11,7 @@
         <el-form-item label="预测天数(horizon)">
           <el-select v-model.number="form.horizon" placeholder="选择 horizon">
             <el-option label="7天" :value="7" />
+            <el-option label="14天" :value="14" />
             <el-option label="30天" :value="30" />
           </el-select>
         </el-form-item>

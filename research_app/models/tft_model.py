@@ -125,14 +125,15 @@ def train_tft(
 
     seed_everything(42, workers=True)
     device = "cpu"
-    max_prediction_length = forecast_steps
+    max_prediction_length = max(forecast_steps, holdout_size)
     cutoff = int(history_df["time_idx"].max()) - holdout_size
     min_encoder_length = min(14, encoder_length)
     log_dir = RESEARCH_DIR / ".artifacts"
     log_dir.mkdir(parents=True, exist_ok=True)
+    train_history_df = history_df[history_df["time_idx"] <= cutoff].copy()
 
     training = TimeSeriesDataSet(
-        history_df[history_df["time_idx"] <= cutoff].copy(),
+        train_history_df,
         time_idx="time_idx",
         target="actual",
         group_ids=["series_id"],
@@ -197,8 +198,10 @@ def train_tft(
 
     raw_predictions = tft.predict(val_loader)
     prediction_values = raw_predictions.detach().cpu().numpy().reshape(-1)
-    holdout_actual = history_df[history_df["time_idx"] > cutoff]["actual"].tail(len(prediction_values)).to_numpy(dtype=float)
-    holdout_dates = history_df[history_df["time_idx"] > cutoff]["date"].tail(len(prediction_values)).reset_index(drop=True)
+    holdout_frame = history_df[history_df["time_idx"] > cutoff].head(holdout_size).copy()
+    holdout_actual = holdout_frame["actual"].to_numpy(dtype=float)
+    holdout_dates = holdout_frame["date"].reset_index(drop=True)
+    prediction_values = prediction_values[: len(holdout_actual)]
 
     metrics = {
         "mae": float(np.mean(np.abs(holdout_actual - prediction_values))),
@@ -206,7 +209,7 @@ def train_tft(
         "mape": _mape(holdout_actual, prediction_values),
     }
 
-    predict_df = pd.concat([history_df, _infer_future_rows(history_df, forecast_steps)], ignore_index=True)
+    predict_df = pd.concat([history_df, _infer_future_rows(history_df, max_prediction_length)], ignore_index=True)
     prediction_dataset = TimeSeriesDataSet.from_dataset(
         training,
         predict_df,
@@ -215,7 +218,8 @@ def train_tft(
     )
     prediction_loader = prediction_dataset.to_dataloader(train=False, batch_size=64, num_workers=0)
     future_predictions = tft.predict(prediction_loader).detach().cpu().numpy().reshape(-1)
-    future_dates = predict_df[predict_df["is_future"] == 1]["date"].reset_index(drop=True).head(len(future_predictions))
+    future_dates = predict_df[predict_df["is_future"] == 1]["date"].reset_index(drop=True).head(forecast_steps)
+    future_predictions = future_predictions[: len(future_dates)]
 
     holdout_df = pd.DataFrame(
         {
@@ -238,7 +242,11 @@ def train_tft(
     return ModelResult(
         model_name="TFT",
         status="trained",
-        notes=f"TFT trained on {len(training.data['target'])} effective samples with encoder={encoder_length}.",
+        notes=(
+            f"TFT trained on {len(training)} training windows "
+            f"from {len(train_history_df)} history rows with encoder={encoder_length} "
+            f"and {len(holdout_actual)}-day holdout."
+        ),
         metrics=metrics,
         forecast_df=result_df,
     )

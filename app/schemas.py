@@ -41,7 +41,7 @@ class FeatureBuildResponse(BaseModel):
 
 class TrainRequest(BaseModel):
     feature_version: str = Field(default="v1")
-    horizon: Literal[7, 30] = 7
+    horizon: Literal[7, 14, 30] = 7
     county: str = Field(default="荔波县")
 
 
@@ -55,7 +55,7 @@ class TrainResponse(BaseModel):
 
 class PredictRequest(BaseModel):
     model_version: str
-    horizon: Literal[7, 30] = 7
+    horizon: Literal[7, 14, 30] = 7
     start_date: date
 
 

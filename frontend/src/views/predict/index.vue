@@ -10,6 +10,7 @@
         <el-form-item label="预测天数">
           <el-select v-model.number="form.horizon" style="width: 100px;">
             <el-option label="7天" :value="7" />
+            <el-option label="14天" :value="14" />
             <el-option label="30天" :value="30" />
           </el-select>
         </el-form-item>
@@ -55,7 +56,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, onMounted, watch } from 'vue'
 import { predict, getPredictions, getModelMetrics } from '@/api'
 import ECharts from '@/components/ECharts.vue'
 import { ElMessage } from 'element-plus'
@@ -75,17 +76,28 @@ const chartOpts = ref({})
 
 const loadingModels = ref(false)
 const modelOptions = ref([])
+const rawModelList = ref([])
 
 const loadModels = async () => {
   loadingModels.value = true
   try {
     const res = await getModelMetrics({ county: '荔波县' })
     const list = Array.isArray(res) ? res : (res.data || [])
-    modelOptions.value = list.map(item => item.model_version)
+    rawModelList.value = list
+    syncModelOptions()
   } catch (e) {
     ElMessage.error('获取模型列表失败')
   } finally {
     loadingModels.value = false
+  }
+}
+
+const syncModelOptions = () => {
+  modelOptions.value = rawModelList.value
+    .filter(item => item.horizon === form.horizon)
+    .map(item => item.model_version)
+  if (form.model_version && !modelOptions.value.includes(form.model_version)) {
+    form.model_version = ''
   }
 }
 
@@ -167,6 +179,13 @@ const renderChart = (data) => {
     ]
   }
 }
+
+watch(() => form.horizon, () => {
+  syncModelOptions()
+  predictionData.value = []
+  chartOpts.value = {}
+  predictRes.value = null
+})
 </script>
 
 <style scoped>

@@ -40,42 +40,71 @@ from research_app.models.xgboost_model import train_xgboost
 
 
 @st.cache_data(show_spinner=False)
-def run_cached_arima(df, county: str | None):
-    return train_arima(df=df, county=county if county != "全部" else None)
+def run_cached_arima(df, county: str | None, horizon: int):
+    return train_arima(
+        df=df,
+        county=county if county != "全部" else None,
+        forecast_steps=horizon,
+        holdout_size=horizon,
+    )
 
 
 @st.cache_data(show_spinner=False)
-def run_cached_prophet(df, county: str | None):
-    return train_prophet(df=df, county=county if county != "全部" else None)
+def run_cached_prophet(df, county: str | None, horizon: int):
+    return train_prophet(
+        df=df,
+        county=county if county != "全部" else None,
+        forecast_steps=horizon,
+        holdout_size=horizon,
+    )
 
 
 @st.cache_data(show_spinner=False)
-def run_cached_xgboost(df, county: str | None):
-    return train_xgboost(df=df, county=county if county != "全部" else None)
+def run_cached_xgboost(df, county: str | None, horizon: int):
+    return train_xgboost(
+        df=df,
+        county=county if county != "全部" else None,
+        forecast_steps=horizon,
+        holdout_size=horizon,
+    )
 
 
 @st.cache_data(show_spinner=False)
-def run_cached_xgboost_shap(df, county: str | None):
-    return build_xgboost_shap_analysis(df=df, county=county if county != "全部" else None)
+def run_cached_xgboost_shap(df, county: str | None, horizon: int):
+    return build_xgboost_shap_analysis(
+        df=df,
+        county=county if county != "全部" else None,
+        holdout_size=horizon,
+    )
 
 
 @st.cache_data(show_spinner=False)
-def run_cached_lstm(df, county: str | None):
-    return train_lstm(df=df, county=county if county != "全部" else None)
+def run_cached_lstm(df, county: str | None, horizon: int):
+    return train_lstm(
+        df=df,
+        county=county if county != "全部" else None,
+        forecast_steps=horizon,
+        holdout_size=horizon,
+    )
 
 
 @st.cache_data(show_spinner=False)
-def run_cached_tft(df, county: str | None):
-    return train_tft(df=df, county=county if county != "全部" else None)
+def run_cached_tft(df, county: str | None, horizon: int):
+    return train_tft(
+        df=df,
+        county=county if county != "全部" else None,
+        forecast_steps=horizon,
+        holdout_size=horizon,
+    )
 
 
-def build_model_results(df, selected_county: str) -> dict[str, object]:
+def build_model_results(df, selected_county: str, horizon: int) -> dict[str, object]:
     return {
-        "ARIMA": run_cached_arima(df, selected_county),
-        "Prophet": run_cached_prophet(df, selected_county),
-        "XGBoost": run_cached_xgboost(df, selected_county),
-        "LSTM": run_cached_lstm(df, selected_county),
-        "TFT": run_cached_tft(df, selected_county),
+        "ARIMA": run_cached_arima(df, selected_county, horizon),
+        "Prophet": run_cached_prophet(df, selected_county, horizon),
+        "XGBoost": run_cached_xgboost(df, selected_county, horizon),
+        "LSTM": run_cached_lstm(df, selected_county, horizon),
+        "TFT": run_cached_tft(df, selected_county, horizon),
     }
 
 
@@ -124,6 +153,7 @@ def main() -> None:
         if "日期类型" in df.columns:
             day_type_options = [v for v in sorted(df["日期类型"].dropna().unique().tolist()) if v]
         selected_day_types = st.multiselect("日期类型", day_type_options, default=day_type_options)
+        selected_horizon = st.selectbox("预测周期(horizon)", [7, 14, 30], index=0)
 
         min_date = df["日期"].min().date() if "日期" in df.columns and df["日期"].notna().any() else None
         max_date = df["日期"].max().date() if "日期" in df.columns and df["日期"].notna().any() else None
@@ -162,7 +192,7 @@ def main() -> None:
         """
     )
 
-    model_results = build_model_results(df, selected_county)
+    model_results = build_model_results(df, selected_county, selected_horizon)
     metrics_df, trained_metrics_df = build_model_metrics_table(model_results)
 
     overview_tab, calendar_tab, compare_tab, models_tab, data_tab = st.tabs(
@@ -206,6 +236,7 @@ def main() -> None:
         st.subheader("模型实验规划")
         model_rows = [{"model_name": name, **meta} for name, meta in MODEL_REGISTRY.items()]
         st.dataframe(model_rows, use_container_width=True, hide_index=True)
+        st.caption(f"当前模型对比周期: {selected_horizon} 天")
 
         st.subheader("模型指标总表")
         st.dataframe(metrics_df, use_container_width=True, hide_index=True)
@@ -311,7 +342,7 @@ def main() -> None:
 
         st.subheader("可解释性分析状态")
         st.info(explainability_status())
-        shap_result = run_cached_xgboost_shap(df, selected_county)
+        shap_result = run_cached_xgboost_shap(df, selected_county, selected_horizon)
         st.write(shap_result.notes)
         if shap_result.status == "ready":
             left, right = st.columns(2)

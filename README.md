@@ -32,6 +32,8 @@ The research-system route is the primary development direction for thesis alignm
 
 ## Setup
 
+Detailed fresh-machine deployment steps are documented in [新电脑部署说明.md](C:/Coding/260214_tourist-traffic/新电脑部署说明.md).
+
 1. Start MySQL:
 
 ```powershell

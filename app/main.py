@@ -14,6 +14,7 @@ from app.database import Base, SessionLocal, engine, get_db
 from app.models import CleanFlowDaily, FeatureDaily, ModelRegistry, PredictionDaily
 from app.schemas import (
     CorrelationItem,
+    DataRangeResponse,
     DataPreviewItem,
     DashboardOverviewResponse,
     DashboardPredictionPoint,
@@ -137,6 +138,28 @@ def preview_data(
         )
         for r in rows
     ]
+
+
+@app.get("/api/v1/data/range", response_model=DataRangeResponse)
+def get_data_range(
+    county: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    stmt = select(
+        func.min(CleanFlowDaily.date),
+        func.max(CleanFlowDaily.date),
+        func.count(),
+    ).select_from(CleanFlowDaily)
+    if county:
+        stmt = stmt.where(CleanFlowDaily.county == county)
+
+    start_date, end_date, row_count = db.execute(stmt).one()
+    return DataRangeResponse(
+        county=county,
+        start_date=start_date,
+        end_date=end_date,
+        row_count=row_count or 0,
+    )
 
 
 @app.post("/api/v1/features/build", response_model=FeatureBuildResponse)

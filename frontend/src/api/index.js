@@ -7,6 +7,7 @@ export const importExcel = (data) => request.post('/api/v1/data/import/excel', d
 })
 
 export const getPreviewData = (params) => request.get('/api/v1/data/preview', { params })
+export const getDataRange = (params) => request.get('/api/v1/data/range', { params })
 
 export const buildFeatures = (data) => request.post('/api/v1/features/build', data)
 

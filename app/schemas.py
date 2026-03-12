@@ -26,6 +26,13 @@ class DataPreviewItem(BaseModel):
     quality_flag: str
 
 
+class DataRangeResponse(BaseModel):
+    county: str | None
+    start_date: date | None
+    end_date: date | None
+    row_count: int
+
+
 class FeatureBuildRequest(BaseModel):
     start_date: date
     end_date: date

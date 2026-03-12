@@ -1,6 +1,13 @@
 <template>
   <div class="feature-build">
     <el-card shadow="hover" header="构建特征工程">
+      <el-alert
+        title="开始日期和结束日期会优先自动读取当前区县在数据库中的有效数据范围"
+        type="info"
+        :closable="false"
+        show-icon
+        class="mb-16"
+      />
       <el-form :model="form" label-width="120px" class="form-container">
         <el-form-item label="区县">
           <el-input v-model="form.county" placeholder="例如：荔波县" />
@@ -33,18 +40,33 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
-import { buildFeatures } from '@/api'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { buildFeatures, getDataRange } from '@/api'
 import { ElMessage } from 'element-plus'
 
 const loading = ref(false)
 const buildResult = ref(null)
 const form = reactive({
-  start_date: '2025-09-11',
-  end_date: '2026-03-05',
+  start_date: '',
+  end_date: '',
   county: '荔波县',
   feature_version: 'v1'
 })
+
+const loadDateRange = async () => {
+  if (!form.county) {
+    return
+  }
+  try {
+    const res = await getDataRange({ county: form.county })
+    if (res?.start_date && res?.end_date) {
+      form.start_date = res.start_date
+      form.end_date = res.end_date
+    }
+  } catch (e) {
+    ElMessage.warning('未能自动读取数据库中的日期范围，请手动填写')
+  }
+}
 
 const handleBuild = async () => {
   if (!form.county || !form.start_date || !form.end_date || !form.feature_version) {
@@ -62,6 +84,17 @@ const handleBuild = async () => {
     loading.value = false
   }
 }
+
+watch(() => form.county, async (value, oldValue) => {
+  if (!value || value === oldValue) {
+    return
+  }
+  await loadDateRange()
+})
+
+onMounted(async () => {
+  await loadDateRange()
+})
 </script>
 
 <style scoped>
@@ -70,6 +103,9 @@ const handleBuild = async () => {
 }
 .mt-20 {
   margin-top: 20px;
+}
+.mb-16 {
+  margin-bottom: 16px;
 }
 .result-box p {
   margin: 5px 0;

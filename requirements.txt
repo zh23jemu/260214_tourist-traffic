@@ -11,6 +11,7 @@ python-dateutil==2.9.0.post0
 python-multipart==0.0.22
 httpx==0.28.1
 PyMySQL==1.1.1
+cryptography==46.0.1
 PyJWT==2.10.1
 lightgbm==4.6.0
 matplotlib==3.10.1
@@ -21,3 +22,7 @@ statsmodels==0.14.4
 xgboost==3.0.0
 prophet==1.1.6
 shap==0.47.1
+torch==2.6.0
+lightning==2.5.1
+pytorch-forecasting==1.4.0
+tbb==2022.2.0

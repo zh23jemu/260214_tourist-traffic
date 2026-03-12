@@ -1,12 +1,12 @@
 import re
-from datetime import datetime
+from datetime import date, datetime
 
 import pandas as pd
 
 WEATHER_RE = re.compile(r"^\s*([^,，]+)\s*[,，]\s*(-?\d+(?:\.\d+)?)\s*℃\s*$")
 
 
-def parse_excel_date(value) -> datetime.date | None:
+def parse_excel_date(value) -> date | None:
     if pd.isna(value):
         return None
     if isinstance(value, pd.Timestamp):

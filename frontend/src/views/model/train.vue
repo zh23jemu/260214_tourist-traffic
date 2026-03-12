@@ -6,10 +6,17 @@
           <el-input v-model="form.county" placeholder="例如：荔波县" />
         </el-form-item>
         <el-form-item label="特征版本">
-          <el-input v-model="form.feature_version" placeholder="v1" />
+          <el-select v-model="form.feature_version" placeholder="选择特征版本" style="width: 180px">
+            <el-option
+              v-for="version in featureVersions"
+              :key="version"
+              :label="version"
+              :value="version"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="预测天数(horizon)">
-          <el-select v-model.number="form.horizon" placeholder="选择 horizon">
+          <el-select v-model.number="form.horizon" placeholder="选择 horizon" style="width: 180px">
             <el-option label="7天" :value="7" />
             <el-option label="14天" :value="14" />
             <el-option label="30天" :value="30" />
@@ -57,20 +64,39 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
-import { trainModel, getModelMetrics } from '@/api'
+import { reactive, ref, onMounted, watch } from 'vue'
+import { trainModel, getModelMetrics, getFeatureVersions } from '@/api'
 import { ElMessage } from 'element-plus'
 
 const form = reactive({
-  feature_version: 'v1',
+  feature_version: '',
   horizon: 7,
   county: '荔波县'
 })
 const training = ref(false)
 const trainResult = ref(null)
+const featureVersions = ref([])
 
 const metricsLoading = ref(false)
 const metricsList = ref([])
+
+const loadFeatureVersions = async () => {
+  try {
+    const res = await getFeatureVersions({ county: form.county || '荔波县' })
+    featureVersions.value = Array.isArray(res?.versions) ? res.versions : []
+    if (featureVersions.value.length > 0) {
+      if (!featureVersions.value.includes(form.feature_version)) {
+        form.feature_version = featureVersions.value[0]
+      }
+    } else {
+      form.feature_version = ''
+      ElMessage.warning('当前区县还没有可用的特征版本，请先到“特征构建”页面生成特征')
+    }
+  } catch (e) {
+    console.error(e)
+    featureVersions.value = []
+  }
+}
 
 const handleTrain = async () => {
   if (!form.county || !form.feature_version || !form.horizon) {
@@ -103,7 +129,16 @@ const loadMetrics = async () => {
 }
 
 onMounted(() => {
+  loadFeatureVersions()
   loadMetrics()
+})
+
+watch(() => form.county, async (value, oldValue) => {
+  if (!value || value === oldValue) {
+    return
+  }
+  await loadFeatureVersions()
+  await loadMetrics()
 })
 </script>
 

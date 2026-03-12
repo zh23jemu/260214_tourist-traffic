@@ -10,6 +10,7 @@ export const getPreviewData = (params) => request.get('/api/v1/data/preview', { 
 export const getDataRange = (params) => request.get('/api/v1/data/range', { params })
 
 export const buildFeatures = (data) => request.post('/api/v1/features/build', data)
+export const getFeatureVersions = (params) => request.get('/api/v1/features/versions', { params })
 
 export const trainModel = (data) => request.post('/api/v1/models/train', data)
 

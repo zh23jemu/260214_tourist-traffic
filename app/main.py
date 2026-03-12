@@ -234,6 +234,20 @@ def list_model_metrics(
     ]
 
 
+@app.get("/api/v1/features/versions")
+def list_feature_versions(
+    county: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    stmt = select(func.distinct(FeatureDaily.feature_version)).order_by(FeatureDaily.feature_version.asc())
+    if county:
+        stmt = stmt.where(FeatureDaily.county == county)
+
+    rows = db.execute(stmt).all()
+    versions = [row[0] for row in rows if row[0]]
+    return {"county": county, "versions": versions}
+
+
 @app.post("/api/v1/models/predict", response_model=PredictResponse)
 def predict(
     req: PredictRequest,
